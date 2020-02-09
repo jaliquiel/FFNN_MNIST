@@ -3,8 +3,10 @@ homework4.pdf
 homework3_jaliquiel_meperezcuello.py
 homework6_jaliquiel_slinnthant.py
 
-mnist_test_images.npy                                                                mnist_train_images.npy
+mnist_test_images.npy
+mnist_train_images.npy
 mnist_train_labels.npy
 mnist_validation_images.npy
 mnist_validation_labels.npy
-mnist_test_images.npy                                                                mnist_test_labels.npy 
+mnist_test_images.npy
+mnist_test_labels.npy 
