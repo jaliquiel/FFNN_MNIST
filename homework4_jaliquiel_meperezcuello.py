@@ -67,6 +67,9 @@ class NN(object):
         return yhat
 
     def backwards(self, x, y):
+        x = x.reshape(-1,1)
+        y = y.reshape(-1,1)
+        print(x.shape)
         gradient_w = [0 for w in self.weights]
         # gradient_b = []
 
@@ -77,7 +80,7 @@ class NN(object):
         # [print(f"z shape is {z.shape}") for z in self.z]
         # [print(f"h shape is {h.shape}") for h in self.h]
 
-        g = self.grad_MSE(self.h[-1], y) * self.sigmoidPrime(self.z[-1])
+        g = self.grad_MSE(self.h[-1], y) * self.sigmoid_prime(self.z[-1])
         w = np.dot(g,self.h[-2].T)
         gradient_w[-1] = w
 
@@ -87,7 +90,7 @@ class NN(object):
 
         for layer in range(2,self.hidden_size+2):
             # print(f"g shape is {g.shape} and z shape is {self.relu_prime(self.z[-layer]).shape}")
-            g =  g * self.sigmoidPrime(self.z[-layer])
+            g =  g * self.sigmoid_prime(self.z[-layer])
             gradient_w[-layer] = np.dot(g,self.h[-layer-1].T)
             # print(f"g shape is {g.shape} and weight shape is {self.weights[-layer].T.shape}")
             g = np.dot(self.weights[-layer].T,g) # before we had -layer-1 but now it works as -layer
@@ -119,20 +122,43 @@ class NN(object):
 
                 # calculate the backprop per one image and then sum all its weights
                 # for x, y in zip()
-                for x in shuffled_X[:,start:finish]:
-                    for y in shuffled_y[:,start:finish]:
 
-                        print(f"x is {x[start:finish]}")
+                mini_batch = [shuffled_X[:,start:finish], shuffled_y[:,start:finish]]
+                self.update_mini_batch(mini_batch,epsilon)
+                # for size in 100:
+                #     gradient_w = self.backwards(shuffled_X[:,start:finish],y)
 
-                        gradient_w = self.backwards(x,y)
-                        for i,weightVal in enumerate(weight_gradient):
-                            weightVal += gradient_w[i]
 
-                for i, weight in enumerate(weight_gradient):
-                    self.weights[i] -= epsilon*weight
+                # for x in shuffled_X[:,start:finish]:
+                #     for y in shuffled_y[:,start:finish]:
+
+                #         print(f"x is {x[start:finish]}")
+
+                #         gradient_w = self.backwards(x,y)
+                #         for i,weightVal in enumerate(weight_gradient):
+                #             weightVal += gradient_w[i]
+
+                # for i, weight in enumerate(weight_gradient):
+                #     self.weights[i] -= epsilon*weight
                 # gradient =  grad_CE(weights, shuffled_X[:,start:finish], shuffled_y[:,start:finish], alpha)
                 # weights = weights - epsilon * gradient
         # return 0
+
+    def update_mini_batch(self, mini_batch, eta):
+        """Update the network's weights and biases by applying
+        gradient descent using backpropagation to a single mini batch.
+        The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
+        is the learning rate."""
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        print(mini_batch[1].shape)
+        for i in range(len(mini_batch)):
+            
+            delta_nabla_w = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i])
+                
+            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        self.weights = [w-(eta/len(mini_batch))*nw
+                        for w, nw in zip(self.weights, nabla_w)]
+
 
     # Calculate the gradient of cross entropy loss
     # TODO REGULARIZATION FOR LATER
@@ -161,11 +187,12 @@ class NN(object):
 
     def sigmoid_prime(self, z):
         """Derivative of the sigmoid function."""
-        return sigmoid(z)*(1-sigmoid(z))
+        return self.sigmoid(z)*(1-self.sigmoid(z))
 
 
-
-
+# Percent of correctly classified images
+def PC(yhat, y):
+    return np.mean(np.argmax(yhat, axis = 0) == np.argmax(y, axis=0))
 
 # Calculate Cross Entropy without regularization 
 def CE(yhat, y):
@@ -204,7 +231,14 @@ def train_number_classifier ():
     alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
 
     nn = NN(X_tr,y_tr,1, 30)
-    nn.SGD(10,30,3,0.1)
+    nn.SGD(10,30,0.1,0.1)
+    yhat = nn.foward(X_tr)
+    pc_tr = PC(yhat, y_tr)
+    print("The PC for test set is " + str(pc_tr) + " correct")
+
+
+    # def SGD(self,batch_size, epochs, epsilon, alpha):
+
 
 
     # yhat= nn.foward(X_tr)
