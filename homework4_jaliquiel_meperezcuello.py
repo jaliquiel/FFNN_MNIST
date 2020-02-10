@@ -37,11 +37,12 @@ class NN(object):
         self.output_size = y.shape[0] # 10
         self.hidden_size = hidden_size
         self.num_neurons = num_neurons
-        self.weights = self.generateWeights()
+        self.weights = self.generate_weights()
+        self.biases = self.generate_biases()
         self.z = []
         self.h = []
 
-    def generateWeights(self):
+    def generate_weights(self):
         weights = [np.random.rand(self.num_neurons,self.num_neurons) for layers in range(self.hidden_size-1)]
         weight_input = np.random.rand(self.num_neurons,self.input_size) * 0.01
         weights.insert(0,weight_input)
@@ -49,19 +50,41 @@ class NN(object):
         weights.append(weight_output)
         return weights
 
+    def generate_biases(self):
+
+        # sizes = [785,30,30,30,10]
+        # self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
+        # [print(bias.shape) for bias in self.biases]
+
+
+        biases = [np.random.rand(self.num_neurons,1)*0.01 for layers in range(self.hidden_size)]
+        [print(bias.shape) for bias in biases]
+
+        biases_output = np.random.rand(self.output_size,1) * 0.01
+        print(biases_output.shape)
+        biases.append(biases_output)
+        return biases
+
+
     def foward(self, h):
         # TODO add bias to everything
         # TODO add a list to keep track each activation function
 
         # Input will always a fixed image 784 
+
+
+        # [print(bias.shape) for bias in self.biases]
+
         self.h.append(h)
-        for weight in self.weights[:-1]:
-            z = np.dot(weight, h)
+        for weight, bias in zip(self.weights[:-1],self.biases[:-1]):
+            print(weight.shape ,bias.shape)
+            z = np.dot(weight, h) + bias
             h = self.relu(z)
             self.z.append(z)
             self.h.append(h)
-        z = np.dot(self.weights[-1], h)
-        yhat = softmax(z, h)
+        z = np.dot(self.weights[-1], h) + self.biases[-1]
+        yhat = softmax(z)
+        # yhat = self.sigmoid(z)
         self.z.append(z)
         self.h.append(yhat)
         return yhat
@@ -69,9 +92,9 @@ class NN(object):
     def backwards(self, x, y):
         x = x.reshape(-1,1)
         y = y.reshape(-1,1)
-        print(x.shape)
+        # print(x.shape)
         gradient_w = [0 for w in self.weights]
-        # gradient_b = []
+        gradient_b = [0 for b in self.biases]
 
         self.foward(x)
 
@@ -80,22 +103,23 @@ class NN(object):
         # [print(f"z shape is {z.shape}") for z in self.z]
         # [print(f"h shape is {h.shape}") for h in self.h]
 
-        g = self.grad_MSE(self.h[-1], y) * self.sigmoid_prime(self.z[-1])
+        g = self.grad_MSE(self.h[-1], y) # (yhat - y) derivative of softmax
         w = np.dot(g,self.h[-2].T)
         gradient_w[-1] = w
-
+        gradient_b[-1] = g
         g = np.dot(self.weights[-1].T,g)
 
         # [print(f"weight shape is {weight.shape}") for weight in self.weights]
 
         for layer in range(2,self.hidden_size+2):
             # print(f"g shape is {g.shape} and z shape is {self.relu_prime(self.z[-layer]).shape}")
-            g =  g * self.sigmoid_prime(self.z[-layer])
+            g =  g * self.relu_prime(self.z[-layer])
+            gradient_b[-layer] = g
             gradient_w[-layer] = np.dot(g,self.h[-layer-1].T)
             # print(f"g shape is {g.shape} and weight shape is {self.weights[-layer].T.shape}")
             g = np.dot(self.weights[-layer].T,g) # before we had -layer-1 but now it works as -layer
 
-        return gradient_w
+        return gradient_w, gradient_b
 
     def SGD(self,batch_size, epochs, epsilon, alpha):
         # randomize training set     
@@ -117,8 +141,6 @@ class NN(object):
         for epoch in range(epochs):
             for indexes in rounds:
                 start, finish = indexes
-
-                weight_gradient = [0 for w in self.weights]
 
                 # calculate the backprop per one image and then sum all its weights
                 # for x, y in zip()
@@ -150,14 +172,18 @@ class NN(object):
         The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
         is the learning rate."""
         nabla_w = [np.zeros(w.shape) for w in self.weights]
-        print(mini_batch[1].shape)
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        # print(mini_batch[1].shape)
         for i in range(len(mini_batch)):
             
-            delta_nabla_w = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i])
+            delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i])
                 
             nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
         self.weights = [w-(eta/len(mini_batch))*nw
                         for w, nw in zip(self.weights, nabla_w)]
+        self.biases = [b-(eta/len(mini_batch))*nb
+                        for b, nb in zip(self.biases, nabla_b)]
 
 
     # Calculate the gradient of cross entropy loss
@@ -203,7 +229,7 @@ def CE(yhat, y):
     return celoss
 
 #INPUT: Z = W * X where W is shape (10,30) and X is shape (30,500)
-def softmax(z, Xtilde):
+def softmax(z):
     # z = np.dot(weights, Xtilde) # (10 numOfClasses,100 numOfImages)
     yhat = np.exp(z) / np.sum(np.exp(z), axis=0) # axis=0 means sum rows (10)
     return yhat 
@@ -215,11 +241,11 @@ def append_bias(matrix):
 
 def train_number_classifier ():
     # Load data and append bias
-    X_tr = append_bias(np.load("mnist_train_images.npy").T)  # (784, 55000)
+    X_tr = np.load("mnist_train_images.npy").T  # (784, 55000)
     y_tr = np.load("mnist_train_labels.npy").T # (10, 55000)
-    X_val = append_bias(np.load("mnist_validation_images.npy").T) # (784, 5000)
+    X_val = np.load("mnist_validation_images.npy").T # (784, 5000)
     y_val = np.load("mnist_validation_labels.npy").T # (10, 5000)   
-    X_te = append_bias(np.load("mnist_test_images.npy").T)
+    X_te = np.load("mnist_test_images.npy").T
     y_te = np.load("mnist_test_labels.npy").T
     
     # Hyper parameters 
@@ -230,11 +256,11 @@ def train_number_classifier ():
     epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
     alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
 
-    nn = NN(X_tr,y_tr,1, 30)
-    nn.SGD(10,30,0.1,0.1)
+    nn = NN(X_tr,y_tr,5, 30)
+    nn.SGD(64,30,0.001,0.1)
     yhat = nn.foward(X_tr)
     pc_tr = PC(yhat, y_tr)
-    print("The PC for test set is " + str(pc_tr) + " correct")
+    print("The PC for training set is " + str(pc_tr) + " correct")
 
 
     # def SGD(self,batch_size, epochs, epsilon, alpha):
