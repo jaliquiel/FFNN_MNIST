@@ -4,6 +4,16 @@ import matplotlib.animation
 import time 
 import math
 
+'''
+Questions:
+- Should the bias be inside the weights or "+ bias" (for gradient)
+- Is the gradient of CE does it include 1/n
+- Class 6 slide is it doing MSE or is it doing CE? Does the formula stay the same?
+- when we go backwards for the first time, is it softmax or relu
+- do we need softmax prime??????????
+- what do we need to vectorize in th backProp function
+'''
+
 np.random.seed(1234)
 
 # return list of tuples (start,end) for slicing each batch X
@@ -55,10 +65,10 @@ class NN(object):
 
 
         biases = [np.random.rand(self.num_neurons,1)*0.01 for layers in range(self.hidden_size)]
-        [print(bias.shape) for bias in biases]
+        # [print(bias.shape) for bias in biases]
 
         biases_output = np.random.rand(self.output_size,1) * 0.01
-        print(biases_output.shape)
+        # print(biases_output.shape)
         biases.append(biases_output)
         return biases
 
@@ -86,7 +96,7 @@ class NN(object):
         self.h.append(yhat)
         return yhat
 
-    def backwards(self, x, y):
+    def backwards(self, x, y, alpha):
         x = x.reshape(-1,1)
         y = y.reshape(-1,1)
         # print(x.shape)
@@ -101,8 +111,8 @@ class NN(object):
         # [print(f"h shape is {h.shape}") for h in self.h]
 
         g = self.grad_MSE(self.h[-1], y) # (yhat - y) derivative of softmax
-        w = np.dot(g,self.h[-2].T)
-        gradient_w[-1] = w
+        w = np.dot(g,self.h[-2].T) 
+        gradient_w[-1] = w + (alpha * w) 
         gradient_b[-1] = g
         g = np.dot(self.weights[-1].T,g)
 
@@ -112,7 +122,7 @@ class NN(object):
             # print(f"g shape is {g.shape} and z shape is {self.relu_prime(self.z[-layer]).shape}")
             g =  g * self.relu_prime(self.z[-layer])
             gradient_b[-layer] = g
-            gradient_w[-layer] = np.dot(g,self.h[-layer-1].T)
+            gradient_w[-layer] = np.dot(g,self.h[-layer-1].T) + (alpha * self.weights[-layer]) 
             # print(f"g shape is {g.shape} and weight shape is {self.weights[-layer].T.shape}")
             g = np.dot(self.weights[-layer].T,g) # before we had -layer-1 but now it works as -layer
 
@@ -137,7 +147,7 @@ class NN(object):
 
         # start iteration loop
         for epoch in range(epochs):
-            print(f"Current epoch [{epoch}]")
+            print(f"Epoch [{epoch}]")
             for indexes in rounds:
                 start, finish = indexes
 
@@ -145,33 +155,12 @@ class NN(object):
                 # for x, y in zip()
 
                 mini_batch = [shuffled_X[:,start:finish], shuffled_y[:,start:finish]]
-                # print(f"Mini batch round {start}, {finish}")
-                self.update_mini_batch(mini_batch,epsilon)
-
-                # for size in 100:
-                #     gradient_w = self.backwards(shuffled_X[:,start:finish],y)
+                self.update_mini_batch(mini_batch,epsilon, alpha)
 
 
-                # for x in shuffled_X[:,start:finish]:
-                #     for y in shuffled_y[:,start:finish]:
-
-                #         print(f"x is {x[start:finish]}")
-
-                #         gradient_w = self.backwards(x,y)
-                #         for i,weightVal in enumerate(weight_gradient):
-                #             weightVal += gradient_w[i]
-
-                # for i, weight in enumerate(weight_gradient):
-                #     self.weights[i] -= epsilon*weight
-                # gradient =  grad_CE(weights, shuffled_X[:,start:finish], shuffled_y[:,start:finish], alpha)
-                # weights = weights - epsilon * gradient
-        # return 0
-            # yhat = nn.foward(X_tr)
-            # print(size(self.val_data))
-
-            # if self.X_val is not None:
-            #     self.plot_learning_curves()
-        plt.show()
+        #     if self.X_val is not None:
+        #         self.plot_learning_curves(epoch)
+        # plt.show()
 
     def init_plot_parameters(self):
         self.activate = True
@@ -181,8 +170,36 @@ class NN(object):
         self.PC_val = []
         self.fig, self.axs = plt.subplots(2)
 
+    def plot_learning_curves(self, epoch):
+        plt.axis(xmin=0, xmax=self.epochs)
+        yhat_tr = self.foward(self.X)
+        yhat_val = self.foward(self.X_val)
 
-    def plot_learning_curves(self):
+        CE_tr = CE(yhat_tr, self.y)
+        CE_val = CE(yhat_val, self.y_val)
+            
+        PC_tr = PC(yhat_tr, self.y)
+        PC_val = PC(yhat_val, self.y_val)
+
+
+        self.axs[0].plot(epoch, CE_tr, marker= 'o', color='green', linewidth=3, label="train")
+        self.axs[0].plot(epoch, CE_val,  marker= 'o', color='r', linewidth=2, label="val")
+        self.axs[0].set_xlabel("$epoch$", fontsize=12)
+        self.axs[0].set_ylabel('{}'.format('Loss'), fontsize=12)
+
+        self.axs[1].plot(epoch, PC_tr,  marker= 'o', color='green', linewidth=3, label="train")
+        self.axs[1].plot(epoch, PC_val,  marker= 'o', color='r', linewidth=2, label="val")
+        self.axs[1].set_xlabel("$epoch$", fontsize=12)
+        self.axs[1].set_ylabel('{}'.format('PC'), fontsize=12)
+
+        if self.activate is True:
+            self.axs[0].legend()
+            self.axs[1].legend()
+        self.activate =False
+        plt.pause(0.05)
+        plt.tight_layout()
+
+    def plot_learning_curves_save_MEM(self):
         plt.axis(xmin=0, xmax=self.epochs)
         yhat_tr = self.foward(self.X)
         yhat_val = self.foward(self.X_val)
@@ -212,7 +229,7 @@ class NN(object):
         plt.tight_layout()
 
 
-    def update_mini_batch(self, mini_batch, eta):
+    def update_mini_batch(self, mini_batch, eta, alpha):
         """Update the network's weights and biases by applying
         gradient descent using backpropagation to a single mini batch.
         The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
@@ -222,7 +239,7 @@ class NN(object):
         # print(mini_batch[1].shape)
         for i in range(len(mini_batch)):
             
-            delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i])
+            delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i], alpha)
                 
             nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
             nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
@@ -238,7 +255,6 @@ class NN(object):
         distance = yhat - y
         gradient = np.dot(X,distance.T)
         return gradient
-
 
     def grad_MSE(self, yhat, y):
         return yhat - y
@@ -302,19 +318,26 @@ def train_number_classifier ():
     # epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
     # alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
     hidden_layers = [2]
-    num_units = [50] # num of neuros per layer
-    mini_batch_sizes = [16] # mini batch sizes
-    epochs = [50] # number of epochs
-    epsilons = [0.0005] # learning rates
-    alphas = [0.1] # regularization alpha
+    num_units = [30,50] # num of neuros per layer
+    mini_batch_sizes = [16,32] # mini batch sizes
+    epochs = [50,100] # number of epochs
+    epsilons = [0.001,0.01] # learning rates
+    alphas = [0.1,0.01] # regularization alpha
 
+    (2,40)
+    (32,150,0.001,0.1) # ...
+
+    (2,50)
+    (16,50,0.001,0.1)
 
     # TODO: ADD TO DICTIONARY BEST HYPERPARAMETERS
     # key: [int] CE
     # value: tuple of hyperparameters (nTilde, epoch, epsilon, alpha, weights, pcVal)
     # Dictionary to store our all the different hyperparameter sets, their weights and their MSE
     hyper_param_grid = {}
+    neural_network_param = []
     count = 0
+    best_accuracy = 0
 
     # train weights based on all the different sets of hyperparameters
     for hidden_layer in hidden_layers:
@@ -331,18 +354,39 @@ def train_number_classifier ():
                             yhat = neural_network.foward(X_val)
                             # ceVal = CE(yhat, y_val)
                             pcVal = PC(yhat, y_val)
-                            
+
+                            if pcVal > best_accuracy:
+                                best_accuracy = pcVal
+                                neural_network_param = [hidden_layer, num_unit, np.copy(neural_network.weights), np.copy(neural_network.biases)]
+                                hyper_param_grid = [mini_batch_size, epoch, epsilon, alpha, pcVal]
+
                             count += 1
                             # print("The CE for [" + str(count) + "] validation set is " + str(ceVal))
                             print("The PC for [" + str(count) + "] validation set is " + str(pcVal) + " correct")
                             # add to dictionary
                             # hyper_param_grid[ceVal] = (mini_batch_size, epoch, epsilon, alpha, np.copy(weights), pcVal) 
-                            # print("miniBatch: {}, epoch: {}, epsilon: {}, alpha: {}".format(mini_batch_size,epoch,epsilon,alpha))
+                            print("hidden layers: {}, number of neurons: {}, miniBatch: {}, epoch: {}, epsilon: {}, alpha: {}".format(hidden_layer ,num_unit,mini_batch_size,epoch,epsilon,alpha))
 
 
     # get key of dictionary with smallest MSE
     # smallCE = min(hyper_param_grid.keys())
 
+    # show the best hyperparameters
+    print("My best hyperparameters were: ")
+    print("Hidden Layer Size: {}, Number of Neurons: {}, Mini Batch Size: {}, epoch: {}, epsilon: {}, alpha: {}".format(neural_network_param[0], neural_network_param[1],hyper_param_grid[0], hyper_param_grid[1], hyper_param_grid[2], hyper_param_grid[3]))
+    # print("--------------------------------------------------------")
+
+    # create neural network with our best hyperparameters, weights and biases (no need to train)
+    best_neural_network = NN(X_tr,y_tr, neural_network_param[0], neural_network_param[1], X_val, y_val)
+    NN.weights = neural_network_param[2] # weights
+    NN.biases = neural_network_param[3] # biases
+
+    # # Report CE cost on the training
+    best_yhat = best_neural_network.foward(X_te)
+    # ce_te = CE(best_yhat, y_te)
+    pc_te = PC(best_yhat, y_te)
+    # print("The CE for test set is " + str(ce_te))
+    print("The PC for test set is " + str(pc_te) + "% correct")
 
 
     # nn = NN(X_tr,y_tr, 2, 50, X_val, y_val)
@@ -352,19 +396,6 @@ def train_number_classifier ():
     # pc_tr = PC(yhat, y_tr)
     # print("The PC for training set is " + str(pc_tr) + " correct")
 
-
-
-    # yhat= nn.foward(X_tr)
-    # yhat=nn.backwards()
-
-    # [print(weight.shape) for weight in nn.weights]
-    # [print(f"gradient weight is {weight.shape}") for weight in nn.backwards()]
-
-
-
-    # print(yhat.shape)
-    # print(f"h shape is {len(nn.h)}")
-    # print(f"z shape is {len(nn.z)}")
 
 
 if __name__ == '__main__':
