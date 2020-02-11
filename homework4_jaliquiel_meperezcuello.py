@@ -4,16 +4,6 @@ import matplotlib.animation
 import time 
 import math
 
-'''
-Questions:
-- Should the bias be inside the weights or "+ bias" (for gradient)
-- Is the gradient of CE does it include 1/n
-- Class 6 slide is it doing MSE or is it doing CE? Does the formula stay the same?
-- when we go backwards for the first time, is it softmax or relu
-- do we need softmax prime??????????
-- what do we need to vectorize in th backProp function
-'''
-
 np.random.seed(1234)
 
 # return list of tuples (start,end) for slicing each batch X
@@ -305,22 +295,62 @@ def train_number_classifier ():
     y_te = np.load("mnist_test_labels.npy").T
     
     # Hyper parameters 
-    hidden_layers = [3,4,5]
-    num_units = [30,40,50] # num of neuros per layer
-    mini_batch_sizes = [100, 500, 1000, 2000] # mini batch sizes
-    epochs = [1, 2, 3, 4] # number of epochs
-    epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
-    alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
+    # hidden_layers = [3,4,5] # number of hidden layers
+    # num_units = [30,40,50] # num of neuros per layer
+    # mini_batch_sizes = [16, 32, 64, 128, 256] # mini batch sizes
+    # epochs = [1, 2, 3, 4] # number of epochs
+    # epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
+    # alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
+    hidden_layers = [2]
+    num_units = [50] # num of neuros per layer
+    mini_batch_sizes = [16] # mini batch sizes
+    epochs = [50] # number of epochs
+    epsilons = [0.0005] # learning rates
+    alphas = [0.1] # regularization alpha
 
-    nn = NN(X_tr,y_tr, 2, 50, X_val, y_val)
-    nn.SGD(16,50,0.0005,0.1)
-    yhat = nn.foward(X_tr)
-    print(yhat.shape)
-    pc_tr = PC(yhat, y_tr)
-    print("The PC for training set is " + str(pc_tr) + " correct")
+
+    # TODO: ADD TO DICTIONARY BEST HYPERPARAMETERS
+    # key: [int] CE
+    # value: tuple of hyperparameters (nTilde, epoch, epsilon, alpha, weights, pcVal)
+    # Dictionary to store our all the different hyperparameter sets, their weights and their MSE
+    hyper_param_grid = {}
+    count = 0
+
+    # train weights based on all the different sets of hyperparameters
+    for hidden_layer in hidden_layers:
+        for num_unit in num_units:
+            for mini_batch_size in mini_batch_sizes:
+                for epoch in epochs:
+                    for epsilon in epsilons:
+                        for alpha in alphas:
+
+                            neural_network = NN(X_tr,y_tr,hidden_layer,num_unit, X_val,y_val)
+                            neural_network.SGD(mini_batch_size,epoch,epsilon, alpha)
+
+                            # calculate the CE and PC with the validation set
+                            yhat = neural_network.foward(X_val)
+                            # ceVal = CE(yhat, y_val)
+                            pcVal = PC(yhat, y_val)
+                            
+                            count += 1
+                            # print("The CE for [" + str(count) + "] validation set is " + str(ceVal))
+                            print("The PC for [" + str(count) + "] validation set is " + str(pcVal) + " correct")
+                            # add to dictionary
+                            # hyper_param_grid[ceVal] = (mini_batch_size, epoch, epsilon, alpha, np.copy(weights), pcVal) 
+                            # print("miniBatch: {}, epoch: {}, epsilon: {}, alpha: {}".format(mini_batch_size,epoch,epsilon,alpha))
 
 
-    # def SGD(self,batch_size, epochs, epsilon, alpha):
+    # get key of dictionary with smallest MSE
+    # smallCE = min(hyper_param_grid.keys())
+
+
+
+    # nn = NN(X_tr,y_tr, 2, 50, X_val, y_val)
+    # nn.SGD(16,50,0.0005,0.1)
+    # yhat = nn.foward(X_tr)
+    # print(yhat.shape)
+    # pc_tr = PC(yhat, y_tr)
+    # print("The PC for training set is " + str(pc_tr) + " correct")
 
 
 
@@ -339,8 +369,4 @@ def train_number_classifier ():
 
 if __name__ == '__main__':
     train_number_classifier()
-
-    # a = Network([785,30,30,30,10])
-    # for weight in a.weights:
-    #     print(weight.shape)
 
