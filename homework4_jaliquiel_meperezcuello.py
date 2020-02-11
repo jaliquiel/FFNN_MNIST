@@ -1,4 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation
+import time 
 import math
 
 '''
@@ -30,9 +33,11 @@ def get_indexes(n, batchSize):
 # Neural network class
 class NN(object):
 
-    def __init__(self, X, y, hidden_size, num_neurons):
+    def __init__(self, X, y, hidden_size, num_neurons, X_val=None, y_val=None):
         self.X = X
         self.y = y
+        self.X_val = X_val
+        self.y_val = y_val
         self.input_size = X.shape[0] #784
         self.output_size = y.shape[0] # 10
         self.hidden_size = hidden_size
@@ -41,6 +46,8 @@ class NN(object):
         self.biases = self.generate_biases()
         self.z = []
         self.h = []
+        # self.init_plot_parameters()
+
 
     def generate_weights(self):
         weights = [np.random.rand(self.num_neurons,self.num_neurons) for layers in range(self.hidden_size-1)]
@@ -77,7 +84,7 @@ class NN(object):
 
         self.h.append(h)
         for weight, bias in zip(self.weights[:-1],self.biases[:-1]):
-            print(weight.shape ,bias.shape)
+            # print(weight.shape ,bias.shape)
             z = np.dot(weight, h) + bias
             h = self.relu(z)
             self.z.append(z)
@@ -121,8 +128,11 @@ class NN(object):
 
         return gradient_w, gradient_b
 
+
+
     def SGD(self,batch_size, epochs, epsilon, alpha):
-        # randomize training set     
+        # randomize training set
+        self.epochs = epochs
         permute = np.random.permutation(self.X.shape[1])
         shuffled_X  = self.X.T[permute].T #(784, 55000)
         shuffled_y = self.y.T[permute].T #(10,55000)
@@ -136,9 +146,8 @@ class NN(object):
         # weights = np.random.rand(785,10) * 0.01 
 
         # start iteration loop
-
-
         for epoch in range(epochs):
+            print(f"Current epoch [{epoch}]")
             for indexes in rounds:
                 start, finish = indexes
 
@@ -146,7 +155,9 @@ class NN(object):
                 # for x, y in zip()
 
                 mini_batch = [shuffled_X[:,start:finish], shuffled_y[:,start:finish]]
+                # print(f"Mini batch round {start}, {finish}")
                 self.update_mini_batch(mini_batch,epsilon)
+
                 # for size in 100:
                 #     gradient_w = self.backwards(shuffled_X[:,start:finish],y)
 
@@ -165,6 +176,51 @@ class NN(object):
                 # gradient =  grad_CE(weights, shuffled_X[:,start:finish], shuffled_y[:,start:finish], alpha)
                 # weights = weights - epsilon * gradient
         # return 0
+            # yhat = nn.foward(X_tr)
+            # print(size(self.val_data))
+
+            # if self.X_val is not None:
+            #     self.plot_learning_curves()
+        plt.show()
+
+    def init_plot_parameters(self):
+        self.activate = True
+        self.CE_tr = []
+        self.CE_val = []
+        self.PC_tr = []
+        self.PC_val = []
+        self.fig, self.axs = plt.subplots(2)
+
+
+    def plot_learning_curves(self):
+        plt.axis(xmin=0, xmax=self.epochs)
+        yhat_tr = self.foward(self.X)
+        yhat_val = self.foward(self.X_val)
+
+        self.CE_tr.append(CE(yhat_tr, self.y))
+        self.CE_val.append(CE(yhat_val, self.y_val))
+            
+        self.PC_tr.append(PC(yhat_tr, self.y))
+        self.PC_val.append(PC(yhat_val, self.y_val))
+
+
+        self.axs[0].plot(self.CE_tr, color='green', linewidth=3, label="train")
+        self.axs[0].plot(self.CE_val, color='r', linewidth=2, label="val")
+        self.axs[0].set_xlabel("$epoch$", fontsize=12)
+        self.axs[0].set_ylabel('{}'.format('Loss'), fontsize=12)
+
+        self.axs[1].plot(self.PC_tr, color='green', linewidth=3, label="train")
+        self.axs[1].plot(self.PC_val, color='r', linewidth=2, label="val")
+        self.axs[1].set_xlabel("$epoch$", fontsize=12)
+        self.axs[1].set_ylabel('{}'.format('PC'), fontsize=12)
+
+        if self.activate is True:
+            self.axs[0].legend()
+            self.axs[1].legend()
+        self.activate =False
+        plt.pause(0.05)
+        plt.tight_layout()
+
 
     def update_mini_batch(self, mini_batch, eta):
         """Update the network's weights and biases by applying
@@ -256,9 +312,10 @@ def train_number_classifier ():
     epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
     alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
 
-    nn = NN(X_tr,y_tr,5, 30)
-    nn.SGD(64,30,0.001,0.1)
+    nn = NN(X_tr,y_tr, 2, 50, X_val, y_val)
+    nn.SGD(16,50,0.0005,0.1)
     yhat = nn.foward(X_tr)
+    print(yhat.shape)
     pc_tr = PC(yhat, y_tr)
     print("The PC for training set is " + str(pc_tr) + " correct")
 
