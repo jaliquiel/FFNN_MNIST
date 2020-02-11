@@ -150,17 +150,12 @@ class NN(object):
             print(f"Epoch [{epoch}]")
             for indexes in rounds:
                 start, finish = indexes
-
-                # calculate the backprop per one image and then sum all its weights
-                # for x, y in zip()
-
                 mini_batch = [shuffled_X[:,start:finish], shuffled_y[:,start:finish]]
                 self.update_mini_batch(mini_batch,epsilon, alpha)
 
-
-        #     if self.X_val is not None:
-        #         self.plot_learning_curves(epoch)
-        # plt.show()
+            if self.X_val is not None:
+                self.plot_learning_curves(epoch)
+        plt.show()
 
     def init_plot_parameters(self):
         self.activate = True
@@ -175,29 +170,29 @@ class NN(object):
         yhat_tr = self.foward(self.X)
         yhat_val = self.foward(self.X_val)
 
-        CE_tr = CE(yhat_tr, self.y)
-        CE_val = CE(yhat_val, self.y_val)
-            
+        # CE_tr = CE(yhat_tr, self.y)
+        # CE_val = CE(yhat_val, self.y_val)
+        
         PC_tr = PC(yhat_tr, self.y)
         PC_val = PC(yhat_val, self.y_val)
+        print(f"My training data acc is [{PC_tr}], my validation acc is [{PC_val}]")
 
+        # self.axs[0].plot(epoch, CE_tr, marker= 'o', color='green', linewidth=3, label="train")
+        # self.axs[0].plot(epoch, CE_val,  marker= 'o', color='r', linewidth=2, label="val")
+        # self.axs[0].set_xlabel("$epoch$", fontsize=12)
+        # self.axs[0].set_ylabel('{}'.format('Loss'), fontsize=12)
 
-        self.axs[0].plot(epoch, CE_tr, marker= 'o', color='green', linewidth=3, label="train")
-        self.axs[0].plot(epoch, CE_val,  marker= 'o', color='r', linewidth=2, label="val")
-        self.axs[0].set_xlabel("$epoch$", fontsize=12)
-        self.axs[0].set_ylabel('{}'.format('Loss'), fontsize=12)
+        # self.axs[1].plot(epoch, PC_tr,  marker= 'o', color='green', linewidth=3, label="train")
+        # self.axs[1].plot(epoch, PC_val,  marker= 'o', color='r', linewidth=2, label="val")
+        # self.axs[1].set_xlabel("$epoch$", fontsize=12)
+        # self.axs[1].set_ylabel('{}'.format('PC'), fontsize=12)
 
-        self.axs[1].plot(epoch, PC_tr,  marker= 'o', color='green', linewidth=3, label="train")
-        self.axs[1].plot(epoch, PC_val,  marker= 'o', color='r', linewidth=2, label="val")
-        self.axs[1].set_xlabel("$epoch$", fontsize=12)
-        self.axs[1].set_ylabel('{}'.format('PC'), fontsize=12)
-
-        if self.activate is True:
-            self.axs[0].legend()
-            self.axs[1].legend()
-        self.activate =False
-        plt.pause(0.05)
-        plt.tight_layout()
+        # if self.activate is True:
+        #     self.axs[0].legend()
+        #     self.axs[1].legend()
+        # self.activate =False
+        # plt.pause(0.05)
+        # plt.tight_layout()
 
     def plot_learning_curves_save_MEM(self):
         plt.axis(xmin=0, xmax=self.epochs)
@@ -269,15 +264,6 @@ class NN(object):
         return z
 
 
-    def sigmoid(self, z):
-        """The sigmoid function."""
-        return 1.0/(1.0+np.exp(-z))
-
-    def sigmoid_prime(self, z):
-        """Derivative of the sigmoid function."""
-        return self.sigmoid(z)*(1-self.sigmoid(z))
-
-
 # Percent of correctly classified images
 def PC(yhat, y):
     return np.mean(np.argmax(yhat, axis = 0) == np.argmax(y, axis=0))
@@ -290,9 +276,9 @@ def CE(yhat, y):
     celoss = np.mean(verticalSum) * -1
     return celoss
 
-#INPUT: Z = W * X where W is shape (10,30) and X is shape (30,500)
+#INPUT: Z = W * X where W is shape (numberOfClasses,numberOfNeurons) and X is shape (numberOfneurons,numberOfimages)
+# (10,30) (30,500) Z = ((10 numOfClasses,500 numOfImages))
 def softmax(z):
-    # z = np.dot(weights, Xtilde) # (10 numOfClasses,100 numOfImages)
     yhat = np.exp(z) / np.sum(np.exp(z), axis=0) # axis=0 means sum rows (10)
     return yhat 
 
@@ -324,11 +310,12 @@ def train_number_classifier ():
     epsilons = [0.001,0.01] # learning rates
     alphas = [0.1,0.01] # regularization alpha
 
-    (2,40)
-    (32,150,0.001,0.1) # ...
+    # TESTED HYPERPARAMETERS
+    # The PC for [2] validation set is 0.9426 correct
+    # hidden layers: 2, number of neurons: 30, miniBatch: 16, epoch: 50, epsilon: 0.001, alpha: 0.01
 
-    (2,50)
-    (16,50,0.001,0.1)
+    # The PC for [6] validation set is 0.938 correct
+    # hidden layers: 2, number of neurons: 30, miniBatch: 16, epoch: 100, epsilon: 0.001, alpha: 0.01
 
     # TODO: ADD TO DICTIONARY BEST HYPERPARAMETERS
     # key: [int] CE
