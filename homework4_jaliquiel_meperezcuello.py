@@ -14,7 +14,7 @@ Questions:
 - what do we need to vectorize in th backProp function
 '''
 
-np.random.seed(1234)
+np.random.seed(69)
 
 # return list of tuples (start,end) for slicing each batch X
 def get_indexes(n, batchSize):
@@ -61,15 +61,16 @@ class NN(object):
 
         # sizes = [785,30,30,30,10]
         # self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
-        # [print(bias.shape) for bias in self.biases]
 
 
-        biases = [np.random.rand(self.num_neurons,1)*0.01 for layers in range(self.hidden_size)]
+        biases = [np.random.rand(self.num_neurons).reshape(-1,1)*0.01 for layers in range(self.hidden_size)]
         # [print(bias.shape) for bias in biases]
 
-        biases_output = np.random.rand(self.output_size,1) * 0.01
+        biases_output = np.random.rand(self.output_size).reshape(-1,1) * 0.01
         # print(biases_output.shape)
         biases.append(biases_output)
+
+        # [print(bias.shape) for bias in biases]
         return biases
 
 
@@ -83,13 +84,22 @@ class NN(object):
         # [print(bias.shape) for bias in self.biases]
 
         self.h.append(h)
+
+        # print(f"my h shape is {h.shape}")
+
         for weight, bias in zip(self.weights[:-1],self.biases[:-1]):
-            # print(weight.shape ,bias.shape)
+
+
+
+            # print(weight.shape , h.shape,bias.shape)
             z = np.dot(weight, h) + bias
+            # print(f"my z shape is {z.shape}")
+
             h = self.relu(z)
             self.z.append(z)
             self.h.append(h)
         z = np.dot(self.weights[-1], h) + self.biases[-1]
+        # print(f"my z shape is {z.shape}")
         yhat = softmax(z)
         # yhat = self.sigmoid(z)
         self.z.append(z)
@@ -97,9 +107,9 @@ class NN(object):
         return yhat
 
     def backwards(self, x, y, alpha):
-        x = x.reshape(-1,1)
-        y = y.reshape(-1,1)
-        # print(x.shape)
+        # x = x.reshape(-1,1)
+        # y = y.reshape(-1,1)
+        # print(f"my x shape in backwards is {x.shape}")
         gradient_w = [0 for w in self.weights]
         gradient_b = [0 for b in self.biases]
 
@@ -126,6 +136,10 @@ class NN(object):
             # print(f"g shape is {g.shape} and weight shape is {self.weights[-layer].T.shape}")
             g = np.dot(self.weights[-layer].T,g) # before we had -layer-1 but now it works as -layer
 
+        gradient_b = [g.mean(axis=1).reshape(-1,1) for g in gradient_b]
+        # [print(f"the shape of my gradient_b is {b.shape}") for b in gradient_b]
+        # [print(f"the shape of my gradient_w is {w.shape}") for w in gradient_w]
+        
         return gradient_w, gradient_b
 
 
@@ -153,9 +167,9 @@ class NN(object):
                 mini_batch = [shuffled_X[:,start:finish], shuffled_y[:,start:finish]]
                 self.update_mini_batch(mini_batch,epsilon, alpha)
 
-            if self.X_val is not None:
-                self.plot_learning_curves(epoch)
-        plt.show()
+            # if self.X_val is not None:
+            #     self.plot_learning_curves(epoch)
+        # plt.show()
 
     def init_plot_parameters(self):
         self.activate = True
@@ -166,7 +180,7 @@ class NN(object):
         self.fig, self.axs = plt.subplots(2)
 
     def plot_learning_curves(self, epoch):
-        plt.axis(xmin=0, xmax=self.epochs)
+        # plt.axis(xmin=0, xmax=self.epochs)
         yhat_tr = self.foward(self.X)
         yhat_val = self.foward(self.X_val)
 
@@ -229,19 +243,24 @@ class NN(object):
         gradient descent using backpropagation to a single mini batch.
         The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
         is the learning rate."""
-        nabla_w = [np.zeros(w.shape) for w in self.weights]
-        nabla_b = [np.zeros(b.shape) for b in self.biases]
-        # print(mini_batch[1].shape)
-        for i in range(len(mini_batch)):
+
+        # nabla_w = [np.zeros(w.shape) for w in self.weights]
+        # nabla_b = [np.zeros(b.shape) for b in self.biases]
+        # for i in range(len(mini_batch)):
             
-            delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i], alpha)
+        #     delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0][:,i], mini_batch[1][:,i], alpha)
                 
-            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
-            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-        self.weights = [w-(eta/len(mini_batch))*nw
-                        for w, nw in zip(self.weights, nabla_w)]
-        self.biases = [b-(eta/len(mini_batch))*nb
-                        for b, nb in zip(self.biases, nabla_b)]
+        #     nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        #     nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+
+        # delta_nablaw should be 4 weights
+        delta_nabla_w, delta_nabla_b = self.backwards(mini_batch[0], mini_batch[1], alpha)
+        self.weights = [w-eta*nw
+                        for w, nw in zip(self.weights, delta_nabla_w)]
+        self.biases = [b-eta*nb
+                        for b, nb in zip(self.biases, delta_nabla_b)]
+
+        
 
 
     # Calculate the gradient of cross entropy loss
@@ -303,12 +322,12 @@ def train_number_classifier ():
     # epochs = [1, 2, 3, 4] # number of epochs
     # epsilons = [0.1, 3e-3, 1e-3, 3e-5] # learning rates
     # alphas = [0.1, 0.01, 0.05, 0.001] # regularization alpha
-    hidden_layers = [2]
-    num_units = [30,50] # num of neuros per layer
-    mini_batch_sizes = [16,32] # mini batch sizes
-    epochs = [50,100] # number of epochs
-    epsilons = [0.001,0.01] # learning rates
-    alphas = [0.1,0.01] # regularization alpha
+    hidden_layers = [3]
+    num_units = [50] # num of neuros per layer
+    mini_batch_sizes = [100] # mini batch sizes
+    epochs = [15] # number of epochs
+    epsilons = [0.001] # learning rates
+    alphas = [0] # regularization alpha
 
     # TESTED HYPERPARAMETERS
     # The PC for [2] validation set is 0.9426 correct
@@ -316,6 +335,19 @@ def train_number_classifier ():
 
     # The PC for [6] validation set is 0.938 correct
     # hidden layers: 2, number of neurons: 30, miniBatch: 16, epoch: 100, epsilon: 0.001, alpha: 0.01
+
+    # The PC for [14] validation set is 0.9266 correct
+    # hidden layers: 2, number of neurons: 30, miniBatch: 32, epoch: 100, epsilon: 0.001, alpha: 0.01 
+
+    # The PC for [15] validation set is 0.7206 correct
+    # hidden layers: 2, number of neurons: 30, miniBatch: 32, epoch: 100, epsilon: 0.01, alpha: 0.1
+
+    # The PC for [16] validation set is 0.907 correct
+    # hidden layers: 2, number of neurons: 30, miniBatch: 32, epoch: 100, epsilon: 0.01, alpha: 0.01
+
+    # My best hyperparameters were:
+    # Hidden Layer Size: 1, Number of Neurons: 50, Mini Batch Size: 100, epoch: 15, epsilon: 0.001, alpha: 0
+    # The PC for test set is 0.9671% correct
 
     # TODO: ADD TO DICTIONARY BEST HYPERPARAMETERS
     # key: [int] CE
@@ -365,8 +397,8 @@ def train_number_classifier ():
 
     # create neural network with our best hyperparameters, weights and biases (no need to train)
     best_neural_network = NN(X_tr,y_tr, neural_network_param[0], neural_network_param[1], X_val, y_val)
-    NN.weights = neural_network_param[2] # weights
-    NN.biases = neural_network_param[3] # biases
+    best_neural_network.weights = neural_network_param[2] # weights
+    best_neural_network.biases = neural_network_param[3] # biases
 
     # # Report CE cost on the training
     best_yhat = best_neural_network.foward(X_te)
