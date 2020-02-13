@@ -5,7 +5,6 @@ import time
 import math
 
 np.random.seed(1234)
-# np.random.seed(69) 
 
 # return list of tuples (start,end) for slicing each batch X
 def get_indexes(n, batchSize):
@@ -77,7 +76,6 @@ class NN(object):
         self.h.append(yhat)
         return yhat
 
-
     def backwards(self, X, y, alpha):
         gradient_w = [0 for w in self.weights]
         gradient_b = [0 for b in self.biases]
@@ -101,7 +99,6 @@ class NN(object):
         
         return gradient_w, gradient_b
 
-
     def SGD(self,batch_size, epochs, epsilon, alpha):
         # randomize training set
         self.epochs = epochs
@@ -122,6 +119,16 @@ class NN(object):
                 delta_nabla_w, delta_nabla_b = self.backwards(shuffled_X[:,start:finish], shuffled_y[:,start:finish], alpha)
                 self.weights = [w - epsilon*nw for w, nw in zip(self.weights, delta_nabla_w)]
                 self.biases = [b - epsilon*nb for b, nb in zip(self.biases, delta_nabla_b)]
+
+            # todo  UNCOMMENT THIS TO PRINT TFHE LAST 20 EPOCHS
+            # if epoch >= (epochs - 20):
+            #     yhat_tr = self.foward(self.X)
+            #     CE_tr = CE(yhat_tr, self.y)
+            #     PC_tr = PC(yhat_tr, self.y)
+            #     print("This is epoch round [{}]".format(epoch))
+            #     print("Epoch [{}], Cross Entropy Loss: {}".format(epoch , CE_tr))
+            #     print("Epoch [{}], Percent Correct: {}".format(epoch, PC_tr))
+
             # if self.X_val is not None:
             #     self.plot_learning_curves(epoch)
         # plt.show()
@@ -235,16 +242,16 @@ def findBestHyperparameters(X_tr, y_tr, X_val, y_val):
     hidden_layers = [1,3]
     num_units = [30,40] # num of neuros per layer
     mini_batch_sizes = [100,10] # mini batch sizes
-    epochs = [15] # number of epochs
+    epochs = [15,30] # number of epochs
     epsilons = [0.001, 0.01] # learning rates, 0.001
-    alphas = [0] # regularization alpha
+    alphas = [0.1,0.01] # regularization alpha
 
-    # hidden_layers = [5]
-    # num_units = [30] # num of neuros per layer
+    # hidden_layers = [3]
+    # num_units = [40] # num of neuros per layer
     # mini_batch_sizes = [100] # mini batch sizes
-    # epochs = [15] # number of epochs
-    # epsilons = [0.0001] # learning rates, 0.001
-    # alphas = [0] # regularization alpha
+    # epochs = [30] # number of epochs
+    # epsilons = [0.001] # learning rates, 0.001
+    # alphas = [0.1] # regularization alpha
 
     # Lists to store our all the different hyperparameter sets, their weights and their MSE
     hyper_param_grid = []
@@ -277,7 +284,6 @@ def findBestHyperparameters(X_tr, y_tr, X_val, y_val):
                             print("The CE for [" + str(count) + "] validation set is " + str(ceVal))
                             print("The PC for [" + str(count) + "] validation set is " + str(pcVal) + " correct")
                             print("hidden layers: {}, number of neurons: {}, miniBatch: {}, epoch: {}, epsilon: {}, alpha: {}".format(hidden_layer ,num_unit,mini_batch_size,epoch,epsilon,alpha))
-
     return hyper_param_grid, neural_network_param
 
 def train_number_classifier ():
@@ -318,6 +324,11 @@ def train_number_classifier ():
     # My best hyperparameters were:
     # Hidden Layer Size: 1, Number of Neurons: 40, Mini Batch Size: 10, epoch: 15, epsilon: 0.01, alpha: 0
     # The PC for test set is 0.9697% correct
+
+    # My best hyperparameters were:
+    # Hidden Layer Size: 3, Number of Neurons: 40, Mini Batch Size: 100, epoch: 30, epsilon: 0.001, alpha: 0.1
+    # The CE for test set is 0.10139482034664093
+    # The PC for test set is 0.9715 correct
 
     hyper_param_grid, neural_network_param = findBestHyperparameters(X_tr, y_tr, X_val, y_val)
 
